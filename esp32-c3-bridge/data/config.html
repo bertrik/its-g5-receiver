@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Configuration</title>
+    <link rel="icon" type="image/x-icon" href="favicon.png">
+    <link rel="stylesheet" href="classless.css">
+</head>
+
+<body>
+    <p style="text-align:left"><a href="/">/home</a></p>
+    <form action="/config" method="post" id="config">
+        <fieldset>
+            <legend>MQTT configuration</legend>
+            <div class="row">
+                <label class="col">Broker host (leave empty to disable)
+                    <input type="text" name="mqtt_broker_host">
+                </label>
+                <label class="col-3">port
+                    <input type="number" name="mqtt_broker_port" min="0" required>
+                </label>
+            </div>
+            <div class="row">
+                <label class="col">Client user name
+                    <input type="text" name="mqtt_user">
+                </label>
+                <label class="col">password
+                    <input type="text" name="mqtt_pass">
+                </label>
+            </div>
+            <div class="row">
+                <label class="col">Base topic
+                    <input type="text" name="mqtt_topic" required>
+                </label>
+            </div>
+        </fieldset>
+        
+        <!-- Import / Export -->
+        <div class="row">
+            <button type="submit" id="submit">Save</button>
+            <input type="file" id="file" accept=".json" style="display:none">
+            <button type="button" onclick="importConfig()">Import...</button>
+            <button type="button" onclick="exportConfig()">Export...</button>
+        </div>
+    </form>
+
+    <script>
+        // preload config from device
+        document.addEventListener("DOMContentLoaded", async function () {
+            const config = await fetch('/config.json').then(r => r.json());
+
+            for (const name in config) {
+                const el = document.querySelector("[name='" + name + "']");
+                if (el) el.value = config[name];
+            }
+        });
+
+        // disable submit button on POST
+        document.getElementById("config").addEventListener("submit", function () {
+            document.getElementById("submit").disabled = true;
+        });
+
+        // import from file
+        const fileInput = document.getElementById("file");
+        fileInput.onchange = function () {
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+
+            reader.onload = function () {
+                const config = JSON.parse(reader.result);
+
+                for (const name in config) {
+                    const el = document.querySelector("[name='" + name + "']");
+                    if (el) el.value = config[name];
+                }
+            };
+
+            reader.readAsText(file);
+
+            // allow re-selecting same file later
+            fileInput.value = "";
+        };
+
+        // just trigger picker
+        function importConfig() {
+            fileInput.click();
+        }
+
+        // export to file
+        function exportConfig() {
+            const data = new FormData(document.getElementById("config"));
+            const config = {};
+
+            for (const [key, value] of data) {
+                config[key] = value;
+            }
+
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(
+                new Blob([JSON.stringify(config)], { type: "application/json" })
+            );
+            a.download = "config.json";
+            a.click();
+        }
+    </script>
+</body>
+
+</html>

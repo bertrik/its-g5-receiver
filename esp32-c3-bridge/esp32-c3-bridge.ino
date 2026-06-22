@@ -1,8 +1,14 @@
 #include <Arduino.h>
 #include <WiFi.h>
+#include <LittleFS.h>
+#include <ESPmDNS.h>
 
+#include <ESPAsyncWebServer.h>
 #include "MiniShell.h"
 
+#include "config.h"
+
+static AsyncWebServer server(80);
 static MiniShell shell(&Serial);
 
 static int do_wifi(int argc, char *argv[])
@@ -55,6 +61,24 @@ void setup(void)
     configTzTime("CET-1CEST,M3.5.0/02,M10.5.0/03", "pool.ntp.org");
     WiFi.mode(WIFI_AP_STA);
     WiFi.begin();
+
+    // load settings, save defaults if necessary
+    LittleFS.begin();
+    config_begin(LittleFS, "/config.json");
+    if (!config_load()) {
+        config_set_value("mqtt_broker_host", "stofradar.nl");
+        config_set_value("mqtt_broker_port", "1883");
+        config_set_value("mqtt_user", "");
+        config_set_value("mqtt_pass", "");
+        config_set_value("mqtt_topic", "its/node");
+        config_save();
+    }
+    config_serve(server, "/config", "/config.html");
+    server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
+    server.begin();
+
+    MDNS.begin("its-g5-bridge");
+    MDNS.addService("_http", "_tcp", 80);
 }
 
 void loop(void)
