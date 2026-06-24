@@ -1,15 +1,84 @@
 #include <Arduino.h>
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <LittleFS.h>
 #include <ESPmDNS.h>
 
 #include <ESPAsyncWebServer.h>
 #include "MiniShell.h"
+#include <PubSubClient.h>
+#include <MicroSlip.h>
 
 #include "config.h"
 
 static AsyncWebServer server(80);
 static MiniShell shell(&Serial);
+static WiFiClient wifiClient;
+static WiFiClientSecure wifiClientSecure;
+static String rootCA;
+static PubSubClient mqttClient;
+static char esp_mac[24];        // e.g. "aa:bb:cc:dd:ee:ff"
+static char esp_id[16];
+static MicroSlip slip(Serial0);
+static uint8_t packet[2500];
+static StaticJsonDocument < 1024 > infoDoc;
+
+static char mqtt_status_topic[256];
+static char mqtt_info_topic[256];
+static char mqtt_packet_topic[256];
+static char mqtt_info[256];
+
+static void blue_led(bool on)
+{
+    digitalWrite(LED_BUILTIN, on ? LOW : HIGH);
+}
+
+static bool mqtt_connect(void)
+{
+    if (mqttClient.connected()) {
+        // already connected
+        return true;
+    }
+    char proto[8];
+    char host[128];
+    char user[64];
+    char pass[64];
+    strlcpy(proto, config_get_value("mqtt_protocol").c_str(), sizeof(proto));
+    strlcpy(host, config_get_value("mqtt_broker_host").c_str(), sizeof(host));
+    strlcpy(user, config_get_value("mqtt_user").c_str(), sizeof(user));
+    strlcpy(pass, config_get_value("mqtt_pass").c_str(), sizeof(pass));
+    int port = config_get_value("mqtt_broker_port").toInt();
+    bool secure = (strcmp(proto, "mqtts") == 0);
+
+    mqttClient.setClient(secure ? wifiClientSecure : wifiClient);
+    mqttClient.setServer(host, port);
+    bool result;
+    if (strlen(user) > 0) {
+        printf("Connecting to %s@%s://%s:%d...", user, proto, host, port);
+        result = mqttClient.connect(esp_id, user, pass, mqtt_status_topic, 0, true, "", true);
+    } else {
+        printf("Connecting to %s://%s:%d ...", proto, host, port);
+        result = mqttClient.connect(esp_id, NULL, NULL, mqtt_status_topic, 0, true, "", true);
+    }
+    if (result) {
+        printf("Connected!!\n");
+        mqttClient.publish(mqtt_status_topic, "online", true);
+        mqttClient.publish(mqtt_info_topic, mqtt_info);
+    } else {
+        printf("Failed to connect, rc=%d\n", mqttClient.state());
+    }
+    return result;
+}
+
+static bool mqtt_send(const uint8_t *packet, size_t length)
+{
+    if (!mqttClient.connected()) {
+        printf("Not connected to MQTT broker\n");
+        return false;
+    }
+
+    return mqttClient.publish(mqtt_packet_topic, (const uint8_t *) packet, length);
+}
 
 static int do_wifi(int argc, char *argv[])
 {
@@ -46,36 +115,113 @@ static int do_datetime(int argc, char *argv[])
     return 0;
 }
 
+static int do_connect(int argc, char *argv[])
+{
+    return mqtt_connect()? 0 : -1;
+}
+
+static int do_disconnect(int argc, char *argv[])
+{
+    if (mqttClient.connected()) {
+        mqttClient.disconnect();
+        printf("Disconnected from MQTT broker\n");
+    } else {
+        printf("Not connected to MQTT broker\n");
+    }
+    return 0;
+}
+
+static int do_led(int argc, char *argv[])
+{
+    bool state = (argc > 1) ? atoi(argv[1]) : !digitalRead(LED_BUILTIN);
+    digitalWrite(LED_BUILTIN, state ? HIGH : LOW);
+    return 0;
+}
+
+static size_t create_info(char *info, size_t size)
+{
+    infoDoc["emac"] = esp_mac;
+    infoDoc["ver"] = "github.com/bertrik/its-g5-receiver-v0.0.1";
+    infoDoc["hwv"] = "esp32-c5-devkit-c1";
+    return serializeJson(infoDoc, info, size);
+}
+
+static int do_info(int argc, char *argv[])
+{
+    printf("espid: %s\n", esp_id);
+    printf("mqtt_status_topic: %s\n", mqtt_status_topic);
+    printf("mqtt_packet_topic: %s\n", mqtt_packet_topic);
+    printf("info: %s\n", mqtt_info);
+    return 0;
+}
+
 static const cmd_t commands[] = {
     { "wifi", do_wifi, "<ssid> <password> Set WiFi credentials" },
     { "reboot", do_reboot, "Reboot" },
     { "datetime", do_datetime, "Display date and time" },
+    { "connect", do_connect, "Connect to MQTT" },
+    { "disconnect", do_disconnect, "Disconnect from MQTT" },
+    { "led", do_led, "[state]Toggle LED" },
+    { "info", do_info, "Show info string" },
     { NULL, NULL, NULL }
 };
 
 void setup(void)
 {
+    pinMode(LED_BUILTIN, OUTPUT);
+    blue_led(true);
+
     Serial.begin(115200);
     Serial.println("Hello from ESP32-C3 bridge!");
 
+    // initialise the hardware UART on its default pins for SLIP
+    Serial0.begin(115200);
+
+    // get unique ESP32-C3 ID
+    uint64_t chipid = ESP.getEfuseMac();
+    char *pid = esp_id;
+    char *pemac = esp_mac;
+    for (int i = 0; i < 6; i++) {
+        pid += sprintf(pid, "%02x", chipid & 0xFF);
+        pemac += sprintf(pemac, (i < 5) ? "%02x:" : "%02x", chipid & 0xFF);
+        chipid >>= 8;
+    }
+    printf("espid = %s\n", esp_id);
+    sprintf(mqtt_status_topic, "its/%s/status", esp_id);
+    sprintf(mqtt_packet_topic, "its/%s/packet", esp_id);
+    sprintf(mqtt_info_topic, "its/%s/info", esp_id);
+    create_info(mqtt_info, sizeof(mqtt_info));
+
     configTzTime("CET-1CEST,M3.5.0/02,M10.5.0/03", "pool.ntp.org");
     WiFi.mode(WIFI_AP_STA);
+    WiFi.setAutoReconnect(true);
     WiFi.begin();
 
     // load settings, save defaults if necessary
     LittleFS.begin();
     config_begin(LittleFS, "/config.json");
     if (!config_load()) {
+        config_set_value("mqtt_protocol", "mqtt");
         config_set_value("mqtt_broker_host", "stofradar.nl");
         config_set_value("mqtt_broker_port", "1883");
         config_set_value("mqtt_user", "");
         config_set_value("mqtt_pass", "");
-        config_set_value("mqtt_topic", "its/node");
         config_save();
     }
     config_serve(server, "/config", "/config.html");
     server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
     server.begin();
+
+    File f = LittleFS.open("/isrgrootx1.pem", "r");
+    if (f) {
+        rootCA = f.readString();
+        f.close();
+        printf("Setting root CA certificate:\n%s\n", rootCA.c_str());
+        wifiClientSecure.setCACert(rootCA.c_str());
+        Serial.println("Loaded CA certificate");
+    } else {
+        Serial.println("Failed to load CA certificate");
+    }
 
     MDNS.begin("its-g5-bridge");
     MDNS.addService("_http", "_tcp", 80);
@@ -83,6 +229,30 @@ void setup(void)
 
 void loop(void)
 {
+    static uint32_t last_connect = 0;
+    uint32_t now = millis() / 1000;
+
+    // network status, blue while still connecting
+    bool online = (WiFi.status() == WL_CONNECTED) && (time(nullptr) > 1700000000L);
+
+    // try to get MQTT connected
+    if (online && !mqttClient.connected() && ((now - last_connect) > 10)) {
+        if (mqtt_connect()) {
+            blue_led(false);
+        }
+        last_connect = now;
+    }
+    mqttClient.loop();
+
+    // watch for incoming packets
+    size_t pkt_size = slip.parsePacket(packet, sizeof(packet));
+    if (pkt_size > 0) {
+        blue_led(true);
+        if (online && mqtt_connect()) {
+            mqtt_send(packet, pkt_size);
+        }
+        blue_led(false);
+    }
     // command line processing
     shell.process(">", commands);
 }
