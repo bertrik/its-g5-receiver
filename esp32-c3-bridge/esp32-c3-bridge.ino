@@ -61,11 +61,11 @@ static bool mqtt_connect(void)
         result = mqttClient.connect(esp_id, NULL, NULL, mqtt_status_topic, 0, true, "", true);
     }
     if (result) {
-        printf("Connected!!\n");
+        printf("connected!\n");
         mqttClient.publish(mqtt_status_topic, "online", true);
         mqttClient.publish(mqtt_info_topic, mqtt_info);
     } else {
-        printf("Failed to connect, rc=%d\n", mqttClient.state());
+        printf("failed to connect, rc=%d\n", mqttClient.state());
     }
     return result;
 }
@@ -253,6 +253,7 @@ void loop(void)
         }
         blue_led(false);
     }
+
     // command line processing
     shell.process(">", commands);
 }
