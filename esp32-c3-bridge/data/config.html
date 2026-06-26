@@ -14,7 +14,7 @@
             <legend>MQTT configuration</legend>
             <div class="row">
                 <label class="col-2">Protocol
-                    <select name="mqtt_protocol">
+                    <select name="mqtt_protocol" required>
                         <option value="mqtt">mqtt://</option>
                         <option value="mqtts">mqtts://</option>
                     </select>
@@ -22,7 +22,7 @@
                 <label class="col">Broker host (leave empty to disable)
                     <input type="text" name="mqtt_broker_host">
                 </label>
-                <label class="col-3">port
+                <label class="col-3">Port
                     <input type="number" name="mqtt_broker_port" min="0" required>
                 </label>
             </div>
@@ -30,7 +30,7 @@
                 <label class="col">Client user name
                     <input type="text" name="mqtt_user">
                 </label>
-                <label class="col">password
+                <label class="col">Password
                     <input type="text" name="mqtt_pass">
                 </label>
             </div>
