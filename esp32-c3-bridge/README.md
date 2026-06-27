@@ -68,6 +68,8 @@ This also shows a link to an internal web page, e.g. http://192.168.1.52
 ### MQTT configuration
 Open the link mentioned above in a browser to enter the configuration web page.
 
+![MQTT page](mqtt_config.png "MQTT page")
+
 On the configuration web page, you can enter MQTT information.
 
 Typically for opentrafficmap.org:
