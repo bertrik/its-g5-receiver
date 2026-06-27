@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
+#include <NetworkEvents.h>
 #include <LittleFS.h>
 #include <ESPmDNS.h>
 
@@ -15,6 +16,8 @@ static AsyncWebServer server(80);
 static MiniShell shell(&Serial);
 static WiFiClient wifiClient;
 static WiFiClientSecure wifiClientSecure;
+static WiFiEvent_t lastWifiEvent = ARDUINO_EVENT_NONE;
+static WiFiEvent_t wifiEvent = ARDUINO_EVENT_NONE;
 static String rootCA;
 static PubSubClient mqttClient;
 static char esp_mac[24];        // e.g. "aa:bb:cc:dd:ee:ff"
@@ -78,6 +81,11 @@ static bool mqtt_send(const uint8_t *packet, size_t length)
     }
 
     return mqttClient.publish(mqtt_packet_topic, (const uint8_t *) packet, length);
+}
+
+static void handleWifiEvent(WiFiEvent_t event)
+{
+    wifiEvent = event;
 }
 
 static int do_wifi(int argc, char *argv[])
@@ -196,6 +204,7 @@ void setup(void)
     configTzTime("CET-1CEST,M3.5.0/02,M10.5.0/03", "pool.ntp.org");
     WiFi.mode(WIFI_AP_STA);
     WiFi.setAutoReconnect(true);
+    WiFi.onEvent(handleWifiEvent);
     WiFi.begin();
 
     // load settings, save defaults if necessary
@@ -217,7 +226,7 @@ void setup(void)
     if (f) {
         rootCA = f.readString();
         f.close();
-        printf("Setting root CA certificate:\n%s\n", rootCA.c_str());
+        printf("Setting root CA certificate:\n");
         wifiClientSecure.setCACert(rootCA.c_str());
         Serial.println("Loaded CA certificate");
     } else {
@@ -235,7 +244,10 @@ void loop(void)
 
     // network status, blue while still connecting
     bool online = (WiFi.status() == WL_CONNECTED) && (time(nullptr) > 1700000000L);
-
+    if (lastWifiEvent != wifiEvent) {
+        lastWifiEvent = wifiEvent;
+        printf("WiFi event: %s\n", NetworkEvents::eventName(wifiEvent));
+    }
     // try to get MQTT connected
     if (online && !mqttClient.connected() && ((now - last_connect) > 10)) {
         if (mqtt_connect()) {
@@ -254,7 +266,6 @@ void loop(void)
         }
         blue_led(false);
     }
-
     // command line processing
     shell.process(">", commands);
 }
