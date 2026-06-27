@@ -2,7 +2,7 @@
 Simple ITS-G5 receiver for ITS-G5 802.11p frames
 
 
-## Compiling the sniffer firmware
+## Compiling sniffer firmware
 
 - If you don't already have a Python virtual environment, create one:
 
@@ -22,10 +22,23 @@ Simple ITS-G5 receiver for ITS-G5 802.11p frames
   pip install platformio
   ```
 
-## Uploading
+## Programming firmware
 Make sure the virtual environment is activated (see above).
 
-Compile and upload:
+Compile and upload the firmware:
 ```bash
 pio run -t upload
 ```
+
+## Configuration
+
+There is not anything to configure.
+A simple command line processor runs on the USB port (likely /dev/ttyACM0 on Linux)
+
+## Use
+
+Provide power to the board using the "USB" port on the esp32-c5.
+It can also be powered through the 5V/GND pins, e.g. when connected to an esp32-c3 bridge.
+
+The LED flashes blinks every second to indicate that the sniffer is active and waiting for packets.
+The LED flashes green when a packet was received and it is being forwarded over the serial port.
