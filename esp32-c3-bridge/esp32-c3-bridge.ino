@@ -148,9 +148,10 @@ static size_t create_info(char *info, size_t size)
 
 static int do_info(int argc, char *argv[])
 {
-    printf("espid: %s\n", esp_id);
+    printf("node: %s\n", esp_id);
     printf("mqtt_status_topic: %s\n", mqtt_status_topic);
     printf("mqtt_packet_topic: %s\n", mqtt_packet_topic);
+    printf("mqtt_info_topic: %s\n", mqtt_info_topic);
     printf("info: %s\n", mqtt_info);
     return 0;
 }
