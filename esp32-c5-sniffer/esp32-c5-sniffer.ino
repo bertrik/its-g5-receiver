@@ -1,20 +1,21 @@
-#include <Arduino.h>
-
+#include <stdlib.h>
 #include <atomic>
 #include <cstring>
+
+#include <Arduino.h>
 
 #include "esp_wifi.h"
 #include "esp_wifi_secret.h"
 
-#include "Adafruit_NeoPixel.h"
-#include "MiniShell.h"
+#include <Adafruit_NeoPixel.h>
+#include <MiniShell.h>
 #include <MicroSlip.h>
 
 #define RGB_LED_PIN 27
 
 static Adafruit_NeoPixel led(1, RGB_LED_PIN, NEO_GRB + NEO_KHZ800);
 
-// when configured with USB-CDC port, "Serial" goes to ACM0 (USB-CDC), "Serial0"/printf goes to USB0
+// when configured with USB-CDC port, "Serial" goes to ACM0 (USB-CDC), "Serial0"/printf goes to UART/USB0
 static MiniShell shell(&Serial);
 static MicroSlip slip(Serial0);
 
@@ -33,6 +34,16 @@ static packet_t queue[QUEUE_SIZE];
 static std::atomic < int >writeIndex = 0;
 static std::atomic < int >readIndex = 0;
 static std::atomic < uint32_t > droppedPackets = 0;
+
+static void set_led(uint32_t rgb)
+{
+    static uint32_t last_rgb = -1;
+    if (last_rgb != rgb) {
+        last_rgb = rgb;
+        led.setPixelColor(0, rgb);
+        led.show();
+    }
+}
 
 static void printhex(const char *title, const uint8_t *buf, size_t len, int rowsize = 16)
 {
@@ -105,13 +116,9 @@ static void wifi_sniffer_cb(void *rawpkt, wifi_promiscuous_pkt_type_t type)
     if (len < (4 + 6) || memcmp(&pkt->payload[4], "\xFF\xFF\xFF\xFF\xFF\xFF", 6))
         return;
 
-    // toggle the led
-    rgb ^= 0x001100;
-
     // enqueue, indicate error on failure
     if (!enqueue(millis(), len, pkt->payload)) {
         droppedPackets.fetch_add(1, std::memory_order_relaxed);
-        rgb ^= 0x110000;
     }
 }
 
@@ -161,35 +168,29 @@ void setup(void)
     phy_change_channel(CHANNEL, 1, 0, 0);
 
     led.begin();
-
-    rgb = 0;
-    led.setPixelColor(0, rgb);
-    led.show();
+    led.setBrightness(32);
+    set_led(0);
 }
 
 void loop(void)
 {
+    // determine status led color
+    div_t divided = div(millis(), 1000);
+    long int sec = divided.quot;
+    long int msec = divided.rem;
+    set_led((msec < 50) ? 0x000044 : 0);
+
+    // send packets over SLIP
     packet_t pkt;
     while (dequeue(&pkt)) {
-        printhex("Packet", pkt.data, pkt.len);
+        set_led(0x00FF00);
         slip.beginPacket();
         slip.write(pkt.data, pkt.len);
         slip.endPacket();
+        printhex("Packet", pkt.data, pkt.len);
+        set_led(0);
     }
 
-    static uint32_t last = -1;
-    uint32_t sec = millis() / 1000;
-    if (sec != last) {
-        last = sec;
-        rgb ^= 0x000011;
-    }
-
-    static uint32_t last_rgb = 0;
-    if (last_rgb != rgb) {
-        last_rgb = rgb;
-        led.setPixelColor(0, rgb);
-        led.show();
-    }
     // command line processing
     shell.process(">", commands);
 }
