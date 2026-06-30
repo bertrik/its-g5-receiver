@@ -166,6 +166,16 @@ static int do_info(int argc, char *argv[])
     return 0;
 }
 
+static int do_config(int argc, char *argv[])
+{
+    File f = LittleFS.open("/config.json", "r");
+    if (f) {
+        Serial.println(f.readString());
+        f.close();
+    }
+    return 0;
+}
+
 static const cmd_t commands[] = {
     { "network", do_network, "[<ssid> [password]] Configure WIFi / show network" },
     { "reboot", do_reboot, "Reboot" },
@@ -173,6 +183,7 @@ static const cmd_t commands[] = {
     { "disconnect", do_disconnect, "Disconnect from MQTT" },
     { "led", do_led, "[state]Toggle LED" },
     { "info", do_info, "Show info string" },
+    { "config", do_config, "Show configuration" },
     { NULL, NULL, NULL }
 };
 
@@ -227,9 +238,8 @@ void setup(void)
     if (f) {
         rootCA = f.readString();
         f.close();
-        printf("Setting root CA certificate:\n");
+        printf("Loading root CA certificate:\n");
         wifiClientSecure.setCACert(rootCA.c_str());
-        Serial.println("Loaded CA certificate");
     } else {
         Serial.println("Failed to load CA certificate");
     }
@@ -249,7 +259,6 @@ void loop(void)
         lastWifiEvent = wifiEvent;
         printf("WiFi event: %s\n", NetworkEvents::eventName(wifiEvent));
     }
-
     // try to get MQTT connected
     if (online && !mqttClient.connected() && ((now - last_connect) > 10)) {
         // show blue while still connecting, off when connected
@@ -269,7 +278,6 @@ void loop(void)
         }
         blue_led(false);
     }
-
     // command line processing
     shell.process(">", commands);
 }
