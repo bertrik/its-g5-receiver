@@ -130,11 +130,6 @@ static int do_datetime(int argc, char *argv[])
     return 0;
 }
 
-static int do_connect(int argc, char *argv[])
-{
-    return mqtt_connect()? 0 : -1;
-}
-
 static int do_disconnect(int argc, char *argv[])
 {
     if (mqttClient.connected()) {
@@ -175,7 +170,6 @@ static const cmd_t commands[] = {
     { "network", do_network, "[<ssid> [password]] Configure WIFi / show network" },
     { "reboot", do_reboot, "Reboot" },
     { "datetime", do_datetime, "Display date and time" },
-    { "connect", do_connect, "Connect to MQTT" },
     { "disconnect", do_disconnect, "Disconnect from MQTT" },
     { "led", do_led, "[state]Toggle LED" },
     { "info", do_info, "Show info string" },
