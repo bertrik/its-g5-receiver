@@ -249,17 +249,18 @@ void loop(void)
     static uint32_t last_connect = 0;
     uint32_t now = millis() / 1000;
 
-    // network status, blue while still connecting
+    // network status
     bool online = (WiFi.status() == WL_CONNECTED) && (time(nullptr) > 1700000000L);
     if (lastWifiEvent != wifiEvent) {
         lastWifiEvent = wifiEvent;
         printf("WiFi event: %s\n", NetworkEvents::eventName(wifiEvent));
     }
+
     // try to get MQTT connected
     if (online && !mqttClient.connected() && ((now - last_connect) > 10)) {
-        if (mqtt_connect()) {
-            blue_led(false);
-        }
+        // show blue while still connecting, off when connected
+        bool connected = mqtt_connect();
+        blue_led(!connected);
         last_connect = now;
     }
     mqttClient.loop();
@@ -268,11 +269,13 @@ void loop(void)
     size_t pkt_size = slip.parsePacket(packet, sizeof(packet));
     if (pkt_size > 0) {
         blue_led(true);
-        if (online && mqtt_connect()) {
+        printf("Got packet %d bytes\n", pkt_size);
+        if (online && mqttClient.connected()) {
             mqtt_send(packet, pkt_size);
         }
         blue_led(false);
     }
+
     // command line processing
     shell.process(">", commands);
 }
