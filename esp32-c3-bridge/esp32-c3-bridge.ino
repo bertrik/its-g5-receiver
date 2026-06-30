@@ -88,18 +88,25 @@ static void handleWifiEvent(WiFiEvent_t event)
     wifiEvent = event;
 }
 
-static int do_wifi(int argc, char *argv[])
+static int do_network(int argc, char *argv[])
 {
     if (argc > 1) {
         char *ssid = argv[1];
         const char *pass = (argc > 2) ? argv[2] : "";
+        WiFi.disconnect();
+        delay(1000);
+        printf("Starting WiFi...");
         WiFi.begin(ssid, pass);
+        printf("done\n");
     }
-    printf("SSID:     %s\n", WiFi.SSID().c_str());
-    printf("GateWay:  %s\n", WiFi.gatewayIP().toString().c_str());
-    printf("IP addr:  %s\n", WiFi.localIP().toString().c_str());
-    printf("Web page: http://%s\n", WiFi.localIP().toString().c_str());
-    return (WiFi.status() == WL_CONNECTED) ? 0 : -2;
+    wl_status_t status = WiFi.status();
+    printf("SSID:    %s\n", WiFi.SSID().c_str());
+    printf("Status:  %d\n", status);
+    printf("Inet:    %s\n", WiFi.localIP().toString().c_str());
+    printf("Gateway: %s\n", WiFi.gatewayIP().toString().c_str());
+    printf("Netmask: %s\n", WiFi.subnetMask().toString().c_str());
+    printf("Web url: http://%s\n", WiFi.localIP().toString().c_str());
+    return status == WL_CONNECTED ? 0 : status;
 }
 
 static int do_reboot(int argc, char *argv[])
@@ -165,7 +172,7 @@ static int do_info(int argc, char *argv[])
 }
 
 static const cmd_t commands[] = {
-    { "wifi", do_wifi, "<ssid> <password> Set WiFi credentials" },
+    { "network", do_network, "[<ssid> [password]] Configure WIFi / show network" },
     { "reboot", do_reboot, "Reboot" },
     { "datetime", do_datetime, "Display date and time" },
     { "connect", do_connect, "Connect to MQTT" },
