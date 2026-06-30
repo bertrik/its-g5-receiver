@@ -213,7 +213,7 @@ void setup(void)
     if (!config_load()) {
         config_set_value("mqtt_protocol", "mqtt");
         config_set_value("mqtt_broker_host", "");
-        config_set_value("mqtt_broker_port", "");
+        config_set_value("mqtt_broker_port", "1883");
         config_set_value("mqtt_user", "");
         config_set_value("mqtt_pass", "");
         config_save();
