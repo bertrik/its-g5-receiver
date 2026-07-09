@@ -11,6 +11,7 @@
 #include <MicroSlip.h>
 
 #include "config.h"
+#include "parse.h"
 
 static AsyncWebServer server(80);
 static MiniShell shell(&Serial);
@@ -277,6 +278,13 @@ void loop(void)
             mqtt_send(packet, pkt_size);
         }
         blue_led(false);
+
+        ieee80211_t ieee;
+        if (parse_ieee80211(packet, pkt_size, &ieee) > 0) {
+            printf("IEEE 802.11 packet from %02x:%02x:%02x:%02x:%02x:%02x, sequence control: %04x\n",
+                   ieee.source_mac[0], ieee.source_mac[1], ieee.source_mac[2],
+                   ieee.source_mac[3], ieee.source_mac[4], ieee.source_mac[5], ieee.sequence_ctrl);
+        }
     }
     // command line processing
     shell.process(">", commands);
