@@ -1,5 +1,8 @@
 # its-g5-receiver
-Simple ITS-G5 receiver for ITS-G5 802.11p frames
+Simple ITS-G5 receiver for ITS-G5 802.11p frames.
+
+This part is the MQTT bridge.
+It receives frames from the esp32-c5 acting as sniffer and forwards them over MQTT.
 
 
 ## Compiling bridge firmware
@@ -30,7 +33,7 @@ First, make sure the firmware can compile:
 pio run
 ```
 
-Upload the internal file system contents:
+Upload the internal file system contents (web server files, root certificate):
 ```bash
 pio run -t uploadfs
 ```
@@ -68,7 +71,7 @@ This also shows a link to an internal web page, e.g. http://192.168.1.52
 ### MQTT configuration
 Open the link mentioned above in a browser to enter the configuration web page.
 
-![MQTT page](mqtt_config.png "MQTT page")
+![MQTT page](images/mqtt_config.png "MQTT page")
 
 On the configuration web page, you can enter MQTT information.
 
