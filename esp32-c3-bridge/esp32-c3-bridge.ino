@@ -12,6 +12,7 @@
 
 #include "config.h"
 #include "parse.h"
+#include "stats.h"
 
 static AsyncWebServer server(80);
 static MiniShell shell(&Serial);
@@ -94,9 +95,9 @@ static int do_network(int argc, char *argv[])
     if (argc > 1) {
         char *ssid = argv[1];
         const char *pass = (argc > 2) ? argv[2] : "";
-        WiFi.disconnect();
+        WiFi.disconnect(true, true);
         delay(1000);
-        printf("Starting WiFi...");
+        printf("Starting WiFi %s with password '%s'...", ssid, pass);
         WiFi.begin(ssid, pass);
         printf("done\n");
     }
@@ -232,6 +233,8 @@ void setup(void)
         config_save();
     }
     config_serve(server, "/config", "/config.html");
+    stats_begin();
+    stats_serve(server, "/stats");
     server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
     server.begin();
 
@@ -239,7 +242,7 @@ void setup(void)
     if (f) {
         rootCA = f.readString();
         f.close();
-        printf("Loading root CA certificate:\n");
+        printf("Loading root CA certificate...\n");
         wifiClientSecure.setCACert(rootCA.c_str());
     } else {
         Serial.println("Failed to load CA certificate");
@@ -276,16 +279,21 @@ void loop(void)
         printf("Got packet %d bytes\n", pkt_size);
         if (online && mqttClient.connected()) {
             mqtt_send(packet, pkt_size);
+            stats_count(1);
         }
         blue_led(false);
 
         ieee80211_t ieee;
         if (parse_ieee80211(packet, pkt_size, &ieee) > 0) {
-            printf("IEEE 802.11 packet from %02x:%02x:%02x:%02x:%02x:%02x, sequence control: %04x\n",
-                   ieee.source_mac[0], ieee.source_mac[1], ieee.source_mac[2],
-                   ieee.source_mac[3], ieee.source_mac[4], ieee.source_mac[5], ieee.sequence_ctrl);
+            printf
+                ("IEEE 802.11 packet from %02x:%02x:%02x:%02x:%02x:%02x, sequence control: %04x\n",
+                 ieee.source_mac[0], ieee.source_mac[1], ieee.source_mac[2], ieee.source_mac[3],
+                 ieee.source_mac[4], ieee.source_mac[5], ieee.sequence_ctrl);
         }
     }
+    // keep stats up-to-date
+    stats_update();
+
     // command line processing
     shell.process(">", commands);
 }
