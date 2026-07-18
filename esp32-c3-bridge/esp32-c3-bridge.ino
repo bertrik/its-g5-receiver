@@ -14,6 +14,10 @@
 #include "parse.h"
 #include "stats.h"
 
+#ifndef GIT_VERSION
+#define GIT_VERSION "snapshot"
+#endif
+
 static AsyncWebServer server(80);
 static MiniShell shell(&Serial);
 static WiFiClient wifiClient;
@@ -55,6 +59,7 @@ static bool mqtt_connect(void)
     int port = config_get_value("mqtt_broker_port").toInt();
     bool secure = (strcmp(proto, "mqtts") == 0);
 
+    mqttClient.setBufferSize(2500);
     mqttClient.setClient(secure ? wifiClientSecure : wifiClient);
     mqttClient.setServer(host, port);
     bool result;
@@ -153,14 +158,15 @@ static int do_led(int argc, char *argv[])
 static size_t create_info(char *info, size_t size)
 {
     infoDoc["emac"] = esp_mac;
-    infoDoc["ver"] = "github.com/bertrik/its-g5-receiver-v0.0.1";
+    infoDoc["ver"] = "github.com/bertrik/its-g5-receiver@" GIT_VERSION;
     infoDoc["hwv"] = "esp32-c5-devkit-c1";
     return serializeJson(infoDoc, info, size);
 }
 
-static int do_info(int argc, char *argv[])
+static int do_mqtt(int argc, char *argv[])
 {
-    printf("node: %s\n", esp_id);
+    printf("mqtt_connection: %s\n", mqttClient.connected() ? "connected" : "not connected");
+    printf("node/clientid: %s\n", esp_id);
     printf("mqtt_status_topic: %s\n", mqtt_status_topic);
     printf("mqtt_packet_topic: %s\n", mqtt_packet_topic);
     printf("mqtt_info_topic: %s\n", mqtt_info_topic);
@@ -184,7 +190,7 @@ static const cmd_t commands[] = {
     { "datetime", do_datetime, "Display date and time" },
     { "disconnect", do_disconnect, "Disconnect from MQTT" },
     { "led", do_led, "[state]Toggle LED" },
-    { "info", do_info, "Show info string" },
+    { "mqtt", do_mqtt, "Show mqtt information" },
     { "config", do_config, "Show configuration" },
     { NULL, NULL, NULL }
 };
@@ -238,14 +244,15 @@ void setup(void)
     server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
     server.begin();
 
+    printf("Loading root CA certificate...");
     File f = LittleFS.open("/isrgrootx1.pem", "r");
     if (f) {
         rootCA = f.readString();
         f.close();
-        printf("Loading root CA certificate...\n");
         wifiClientSecure.setCACert(rootCA.c_str());
+        printf("OK\n");
     } else {
-        Serial.println("Failed to load CA certificate");
+        printf("Failed\n");
     }
 
     MDNS.begin("its-g5-bridge");
@@ -263,11 +270,12 @@ void loop(void)
         lastWifiEvent = wifiEvent;
         printf("WiFi event: %s\n", NetworkEvents::eventName(wifiEvent));
     }
+    blue_led(!(online && mqttClient.connected()));
+
     // try to get MQTT connected
     if (online && !mqttClient.connected() && ((now - last_connect) > 10)) {
         // show blue while still connecting, off when connected
         bool connected = mqtt_connect();
-        blue_led(!connected);
         last_connect = now;
     }
     mqttClient.loop();
