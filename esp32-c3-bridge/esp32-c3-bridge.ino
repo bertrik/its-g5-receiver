@@ -37,9 +37,13 @@ static char mqtt_info_topic[256];
 static char mqtt_packet_topic[256];
 static char mqtt_info[256];
 
-static void blue_led(bool on)
+static void blue_led(int on)
 {
-    digitalWrite(LED_BUILTIN, on ? LOW : HIGH);
+    static int last_on = -1;
+    if (on != last_on) {
+        last_on = on;
+        digitalWrite(LED_BUILTIN, on ? LOW : HIGH);
+    }
 }
 
 static bool mqtt_connect(void)
