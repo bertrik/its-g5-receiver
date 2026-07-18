@@ -1,4 +1,6 @@
 #include <Arduino.h>
+#include <Esp.h>
+
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <NetworkEvents.h>
@@ -67,13 +69,17 @@ static bool mqtt_connect(void)
     mqttClient.setClient(secure ? wifiClientSecure : wifiClient);
     mqttClient.setServer(host, port);
     bool result;
+    char *userp = NULL;
+    char *passp = NULL;;
     if (strlen(user) > 0) {
-        printf("Connecting to %s@%s://%s:%d...", user, proto, host, port);
-        result = mqttClient.connect(esp_id, user, pass, mqtt_status_topic, 0, true, "", true);
-    } else {
-        printf("Connecting to %s://%s:%d ...", proto, host, port);
-        result = mqttClient.connect(esp_id, NULL, NULL, mqtt_status_topic, 0, true, "", true);
+        userp = user;
+        passp = pass;
     }
+    printf("Connecting to %s://%s:%d ...", proto, host, port);
+    uint32_t t0 = millis();
+    result = mqttClient.connect(esp_id, userp, passp, mqtt_status_topic, 0, true, "", true);
+    uint32_t duration = millis() - t0;
+    printf(" %d ms...", duration);
     if (result) {
         printf("connected!\n");
         mqttClient.publish(mqtt_status_topic, "online", true);
@@ -188,6 +194,27 @@ static int do_config(int argc, char *argv[])
     return 0;
 }
 
+static int do_sysinfo(int argc, char *argv[])
+{
+    printf("Chip model: %s (rev 0x%02X)\n", ESP.getChipModel(), ESP.getChipRevision());
+    printf("CPU freq: %d MHz\n", ESP.getCpuFreqMHz());
+    printf("CPU temp: %.1f C\n", temperatureRead());
+    printf("ROM size: %d bytes\n", ESP.getFlashChipSize());
+    printf("ROM freq: %d MHz\n", ESP.getFlashFrequencyMHz());
+    return 0;
+}
+
+static int do_tx(int argc, char *argv[])
+{
+    if (argc > 1) {
+        int tx_power = atoi(argv[1]);
+        printf("Setting TX power to %d dBm\n", tx_power);
+        WiFi.setTxPower((wifi_power_t)(4 * tx_power));
+    }
+    printf("Current TX power: %d dBm\n", WiFi.getTxPower() / 4);
+    return 0;
+}
+
 static const cmd_t commands[] = {
     { "network", do_network, "[<ssid> [password]] Configure WIFi / show network" },
     { "reboot", do_reboot, "Reboot" },
@@ -196,12 +223,23 @@ static const cmd_t commands[] = {
     { "led", do_led, "[state]Toggle LED" },
     { "mqtt", do_mqtt, "Show mqtt information" },
     { "config", do_config, "Show configuration" },
+    { "sysinfo", do_sysinfo, "Show system information" },
+    { "tx", do_tx, "Set tx power" },
     { NULL, NULL, NULL }
 };
 
 void setup(void)
 {
+    // configure LED and turn off
     pinMode(LED_BUILTIN, OUTPUT);
+    digitalWrite(LED_BUILTIN, HIGH);
+
+    // configure SPI idle
+    pinMode(SCK, INPUT_PULLUP);
+    pinMode(MOSI, INPUT_PULLUP);
+    pinMode(MISO, INPUT_PULLUP);
+    pinMode(SS, INPUT_PULLUP);
+
     blue_led(true);
 
     Serial.begin(115200);
@@ -274,7 +312,7 @@ void loop(void)
         lastWifiEvent = wifiEvent;
         printf("WiFi event: %s\n", NetworkEvents::eventName(wifiEvent));
     }
-    blue_led(!(online && mqttClient.connected()));
+    blue_led(!online || !mqttClient.connected());
 
     // try to get MQTT connected
     if (online && !mqttClient.connected() && ((now - last_connect) > 10)) {
@@ -308,4 +346,7 @@ void loop(void)
 
     // command line processing
     shell.process(">", commands);
+
+    // spend some time in low-power mode
+    delay(50);
 }
