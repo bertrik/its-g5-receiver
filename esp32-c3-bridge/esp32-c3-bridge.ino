@@ -323,24 +323,30 @@ void loop(void)
     mqttClient.loop();
 
     // watch for incoming packets
-    size_t pkt_size = slip.parsePacket(packet, sizeof(packet));
-    if (pkt_size > 0) {
+    size_t pkt_size;
+    while ((pkt_size = slip.parsePacket(packet, sizeof(packet))) > 0) {
+        stats_count(1);
+
+        // send over mqtt
         blue_led(true);
         printf("Got packet %d bytes\n", pkt_size);
         if (online && mqttClient.connected()) {
             mqtt_send(packet, pkt_size);
-            stats_count(1);
         }
         blue_led(false);
 
+        // log to console
         ieee80211_t ieee;
         if (parse_ieee80211(packet, pkt_size, &ieee) > 0) {
-            printf
-                ("IEEE 802.11 packet from %02x:%02x:%02x:%02x:%02x:%02x, sequence control: %04x\n",
-                 ieee.source_mac[0], ieee.source_mac[1], ieee.source_mac[2], ieee.source_mac[3],
-                 ieee.source_mac[4], ieee.source_mac[5], ieee.sequence_ctrl);
+            printf(
+                "IEEE 802.11 packet from %02x:%02x:%02x:%02x:%02x:%02x, sequence control: %04x\n",
+                ieee.source_mac[0], ieee.source_mac[1], ieee.source_mac[2],
+                ieee.source_mac[3], ieee.source_mac[4], ieee.source_mac[5],
+                ieee.sequence_ctrl
+            );
         }
     }
+
     // keep stats up-to-date
     stats_update();
 
