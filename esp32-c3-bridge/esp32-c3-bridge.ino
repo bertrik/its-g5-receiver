@@ -175,7 +175,7 @@ static size_t create_info(char *info, size_t size)
 
 static int do_mqtt(int argc, char *argv[])
 {
-    printf("mqtt_connection: %s\n", mqttClient.connected() ? "connected" : "not connected");
+    printf("mqtt_connection: %s\n", mqttClient.connected()? "connected" : "not connected");
     printf("node/clientid: %s\n", esp_id);
     printf("mqtt_status_topic: %s\n", mqtt_status_topic);
     printf("mqtt_packet_topic: %s\n", mqtt_packet_topic);
@@ -209,7 +209,7 @@ static int do_tx(int argc, char *argv[])
     if (argc > 1) {
         int tx_power = atoi(argv[1]);
         printf("Setting TX power to %d dBm\n", tx_power);
-        WiFi.setTxPower((wifi_power_t)(4 * tx_power));
+        WiFi.setTxPower((wifi_power_t) (4 * tx_power));
     }
     printf("Current TX power: %d dBm\n", WiFi.getTxPower() / 4);
     return 0;
@@ -338,12 +338,10 @@ void loop(void)
         // log to console
         ieee80211_t ieee;
         if (parse_ieee80211(packet, pkt_size, &ieee) > 0) {
-            printf(
-                "IEEE 802.11 packet from %02x:%02x:%02x:%02x:%02x:%02x, sequence control: %04x\n",
-                ieee.source_mac[0], ieee.source_mac[1], ieee.source_mac[2],
-                ieee.source_mac[3], ieee.source_mac[4], ieee.source_mac[5],
-                ieee.sequence_ctrl
-            );
+            printf
+                ("IEEE 802.11 packet from %02x:%02x:%02x:%02x:%02x:%02x, sequence control: %04x\n",
+                 ieee.source_mac[0], ieee.source_mac[1], ieee.source_mac[2], ieee.source_mac[3],
+                 ieee.source_mac[4], ieee.source_mac[5], ieee.sequence_ctrl);
         }
     }
 
