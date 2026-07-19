@@ -18,7 +18,7 @@ static void handleStatsRequest(AsyncWebServerRequest *request)
 
     StaticJsonDocument < 1024 > doc;
     doc["timestamp"] = time(nullptr);
-    doc["latest"] = stats.last_received;
+    doc["latest"] = stats.latest;
     doc["uptime"] = millis() / 1000;
     JsonArray counts = doc["counts"].to < JsonArray > ();
     for (int i = 0; i < 60; i++) {
@@ -32,7 +32,7 @@ static void handleStatsRequest(AsyncWebServerRequest *request)
 void stats_begin(void)
 {
     memset(&stats.counts, 0, sizeof(stats.counts));
-    stats.last_received = 0;
+    stats.latest = 0;
     last_minute = -1;
 }
 
@@ -46,7 +46,7 @@ void stats_count(int num)
 {
     int minute = get_minute();
     stats.counts[minute] += num;
-    stats.last_received = time(nullptr);
+    stats.latest = time(nullptr);
 }
 
 // keeps stats updated even when no events happen, call this regularly, at least once per minute
@@ -57,5 +57,14 @@ void stats_update(void)
         last_minute = minute;
         // reset count for the new minute
         stats.counts[minute] = 0;
+    }
+}
+
+void stats_get(stats_t *statistics)
+{
+    statistics->latest = stats.latest;
+    for (int i = 0; i < 60; i++) {
+        int min = (get_minute() + 60 - i) % 60;
+        statistics->counts[i] = stats.counts[min];
     }
 }

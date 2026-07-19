@@ -65,6 +65,11 @@ static bool mqtt_connect(void)
     int port = config_get_value("mqtt_broker_port").toInt();
     bool secure = (strcmp(proto, "mqtts") == 0);
 
+    if (strlen(host) == 0) {
+        // no broker configured, do not attempt to connect
+        return false;
+    }
+
     mqttClient.setBufferSize(2500);
     mqttClient.setClient(secure ? wifiClientSecure : wifiClient);
     mqttClient.setServer(host, port);
@@ -215,6 +220,19 @@ static int do_tx(int argc, char *argv[])
     return 0;
 }
 
+static int do_stats(int argc, char *argv[])
+{
+    stats_t stats;
+    stats_get(&stats);
+    printf("latest: %d\n", stats.latest);
+    printf("counts:");
+    for (int i = 0; i < 60; i++) {
+        printf(" %d", stats.counts[i]);
+    }
+    printf("\n");
+    return 0;
+}
+
 static const cmd_t commands[] = {
     { "network", do_network, "[<ssid> [password]] Configure WIFi / show network" },
     { "reboot", do_reboot, "Reboot" },
@@ -224,7 +242,8 @@ static const cmd_t commands[] = {
     { "mqtt", do_mqtt, "Show mqtt information" },
     { "config", do_config, "Show configuration" },
     { "sysinfo", do_sysinfo, "Show system information" },
-    { "tx", do_tx, "Set tx power" },
+    { "tx", do_tx, "Set WiFi tx power" },
+    { "stats", do_stats, "Show statistic internals" },
     { NULL, NULL, NULL }
 };
 
