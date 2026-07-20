@@ -1,6 +1,9 @@
 # its-g5-receiver
-Simple ITS-G5 receiver for ITS-G5 802.11p frames
+Simple ITS-G5 sniffer for ITS-G5 802.11p frames.
 
+This was inspired by https://git.devlol.org/jstsmthrgk/simple-its-g5-receiver-firmware with the following differences:
+* More Arduino-like, using fewer IDF/FreeRTOS-specific features
+* Uses a simpler, fixed size, ringbuffer instead of dynamically allocating/freeing buffers
 
 ## Compiling sniffer firmware
 
