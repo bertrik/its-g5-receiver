@@ -36,6 +36,7 @@ async function loadStats() {
             </div>
         `)
         .join('');
+    document.getElementById('y-max').textContent = max;
 
     document.getElementById('timestamp').textContent = formatDate(stats.timestamp);
     document.getElementById('latest').textContent = formatDate(stats.latest);
