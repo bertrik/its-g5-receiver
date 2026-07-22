@@ -27,15 +27,22 @@ async function loadStats() {
 
     const chart = document.getElementById('chart');
 
-    chart.innerHTML = counts
-        .map((count, minute) => `
-            <div
-                class="bar"
-                title="-${minute.toString()}min: ${count} messages"
-                style="height:${Math.max(2, (count / max) * 100)}%">
-            </div>
-        `)
-        .join('');
+    const total = counts.length;
+
+    chart.innerHTML = [...counts]
+        .reverse()
+        .map((count, index) => {
+            const minute = total - 1 - index;
+
+            return `
+                <div
+                    class="bar"
+                    title="-${minute} min: ${count} messages"
+                    style="height:${Math.max(2, (count / max) * 100)}%">
+                </div>
+            `;
+        }
+    ).join('');
     document.getElementById('y-max').textContent = max;
 
     document.getElementById('timestamp').textContent = formatDate(stats.timestamp);

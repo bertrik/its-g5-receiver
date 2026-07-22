@@ -10,17 +10,21 @@
 
 <body>
     <div class="card">
-        Now: <span id="timestamp">...</span> (up <span id="uptime">...</span>)<br>
-        Latest: <span id="latest">...</span>
-    </div>
-    <div class="card">
         <h2>Messages per Minute</h2>
+
         <div class="chart-container">
+            <div class="chart-area">
+                <div id="chart"></div>
+                <div class="x-axis">
+                    <div>an hour ago</div>
+                    <div>now</div>
+                </div>
+            </div>
+
             <div class="y-axis">
-                <div id="y-max">0</div>
+                <div id="y-max">max</div>
                 <div>0</div>
             </div>
-            <div id="chart"></div>
         </div>
     </div>
 
