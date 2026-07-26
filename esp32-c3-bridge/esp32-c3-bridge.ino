@@ -54,7 +54,7 @@ static bool mqtt_connect(void)
         // already connected
         return true;
     }
-    char proto[8];
+    char proto[16];
     char host[128];
     char user[64];
     char pass[64];
@@ -63,16 +63,21 @@ static bool mqtt_connect(void)
     strlcpy(user, config_get_value("mqtt_user").c_str(), sizeof(user));
     strlcpy(pass, config_get_value("mqtt_pass").c_str(), sizeof(pass));
     int port = config_get_value("mqtt_broker_port").toInt();
-    bool secure = (strcmp(proto, "mqtts") == 0);
-
     if (strlen(host) == 0) {
         // no broker configured, do not attempt to connect
         return false;
     }
-
-    mqttClient.setBufferSize(2500);
-    mqttClient.setClient(secure ? wifiClientSecure : wifiClient);
+    if (strcmp(proto, "mqtts") == 0) {
+        wifiClientSecure.setCACert(rootCA.c_str());
+        mqttClient.setClient(wifiClientSecure);
+    } else if(strcmp(proto, "mqtts_nocert") == 0) {
+        wifiClientSecure.setInsecure();
+        mqttClient.setClient(wifiClientSecure);
+    } else {
+        mqttClient.setClient(wifiClient);
+    }
     mqttClient.setServer(host, port);
+    mqttClient.setBufferSize(2500);
     bool result;
     char *userp = NULL;
     char *passp = NULL;;
@@ -305,12 +310,11 @@ void setup(void)
     server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
     server.begin();
 
-    printf("Loading root CA certificate...");
+    printf("Reading root CA certificate...");
     File f = LittleFS.open("/isrgrootx1.pem", "r");
     if (f) {
         rootCA = f.readString();
         f.close();
-        wifiClientSecure.setCACert(rootCA.c_str());
         printf("OK\n");
     } else {
         printf("Failed\n");
