@@ -50,14 +50,16 @@ void stats_count(int num)
 }
 
 // keeps stats updated even when no events happen, call this regularly, at least once per minute
-void stats_update(void)
+bool stats_update(void)
 {
     int minute = get_minute();
     if (minute != last_minute) {
         last_minute = minute;
         // reset count for the new minute
         stats.counts[minute] = 0;
+        return true;
     }
+    return false;
 }
 
 void stats_get(stats_t *statistics)

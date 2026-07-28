@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <ESPAsyncWebServer.h>
 
 typedef struct {
@@ -8,5 +9,8 @@ typedef struct {
 void stats_begin(void);
 void stats_serve(AsyncWebServer &server, const char *path);
 void stats_count(int num);
-void stats_update(void);
+
+// returns true if a new minute has started since the last call, false otherwise
+bool stats_update(void);
+
 void stats_get(stats_t *statistics);

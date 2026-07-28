@@ -34,10 +34,11 @@ static MicroSlip slip(Serial0);
 static uint8_t packet[2500];
 static StaticJsonDocument < 1024 > infoDoc;
 
-static char mqtt_status_topic[256];
-static char mqtt_info_topic[256];
-static char mqtt_packet_topic[256];
 static char mqtt_info[256];
+static char mqtt_status_topic[128];
+static char mqtt_info_topic[128];
+static char mqtt_stats_topic[128];
+static char mqtt_packet_topic[128];
 
 static void blue_led(int on)
 {
@@ -46,6 +47,15 @@ static void blue_led(int on)
         last_on = on;
         digitalWrite(LED_BUILTIN, on ? LOW : HIGH);
     }
+}
+
+// publish MQTT message, non-retained, Qos 0, returns true if successful
+static bool mqtt_publish(const char *topic, const uint8_t *payload, size_t length)
+{
+    if (mqttClient.connected()) {
+        return mqttClient.publish(topic, payload, length);
+    }
+    return false;
 }
 
 static bool mqtt_connect(void)
@@ -87,7 +97,7 @@ static bool mqtt_connect(void)
     }
     printf("Connecting to %s://%s:%d ...", proto, host, port);
     uint32_t t0 = millis();
-    result = mqttClient.connect(esp_id, userp, passp, mqtt_status_topic, 0, true, "", true);
+    result = mqttClient.connect(esp_id, userp, passp, mqtt_status_topic, 0, true, "offline", true);
     uint32_t duration = millis() - t0;
     printf(" %d ms...", duration);
     if (result) {
@@ -98,16 +108,6 @@ static bool mqtt_connect(void)
         printf("failed to connect, rc=%d\n", mqttClient.state());
     }
     return result;
-}
-
-static bool mqtt_send(const uint8_t *packet, size_t length)
-{
-    if (!mqttClient.connected()) {
-        printf("Not connected to MQTT broker\n");
-        return false;
-    }
-
-    return mqttClient.publish(mqtt_packet_topic, (const uint8_t *) packet, length);
 }
 
 static void handleWifiEvent(WiFiEvent_t event)
@@ -188,8 +188,9 @@ static int do_mqtt(int argc, char *argv[])
     printf("mqtt_connection: %s\n", mqttClient.connected()? "connected" : "not connected");
     printf("node/clientid: %s\n", esp_id);
     printf("mqtt_status_topic: %s\n", mqtt_status_topic);
-    printf("mqtt_packet_topic: %s\n", mqtt_packet_topic);
     printf("mqtt_info_topic: %s\n", mqtt_info_topic);
+    printf("mqtt_stats_topic: %s\n", mqtt_stats_topic);
+    printf("mqtt_packet_topic: %s\n", mqtt_packet_topic);
     printf("info: %s\n", mqtt_info);
     return 0;
 }
@@ -285,6 +286,7 @@ void setup(void)
     sprintf(mqtt_status_topic, "its/%s/status", esp_id);
     sprintf(mqtt_packet_topic, "its/%s/packet", esp_id);
     sprintf(mqtt_info_topic, "its/%s/info", esp_id);
+    sprintf(mqtt_stats_topic, "its/%s/stats", esp_id);
     create_info(mqtt_info, sizeof(mqtt_info));
 
     configTzTime("CET-1CEST,M3.5.0/02,M10.5.0/03", "pool.ntp.org");
@@ -337,7 +339,7 @@ void loop(void)
     }
     blue_led(!online || !mqttClient.connected());
 
-    // try to get MQTT connected
+    // keep MQTT connected
     if (online && !mqttClient.connected() && ((now - last_connect) > 10)) {
         // show blue while still connecting, off when connected
         bool connected = mqtt_connect();
@@ -354,7 +356,7 @@ void loop(void)
         blue_led(true);
         printf("Got packet %d bytes\n", pkt_size);
         if (online && mqttClient.connected()) {
-            mqtt_send(packet, pkt_size);
+            mqtt_publish(mqtt_packet_topic, packet, pkt_size);
         }
         blue_led(false);
 
@@ -369,7 +371,17 @@ void loop(void)
     }
 
     // keep stats up-to-date
-    stats_update();
+    if (stats_update()) {
+        StaticJsonDocument<128> doc;
+        char temp[16];
+        snprintf(temp, sizeof(temp), "%.1f", temperatureRead());
+        doc["temp"] = temp;
+        uint8_t json[128];
+        size_t size = serializeJson(doc, json);
+        if ((size > 0) && mqtt_publish(mqtt_stats_topic, json, size)) {
+            printf("Published %s: %s\n", mqtt_stats_topic, json);
+        }
+    }
 
     // command line processing
     shell.process(">", commands);
