@@ -306,6 +306,7 @@ void setup(void)
     WiFi.setAutoReconnect(true);
     WiFi.onEvent(handleWifiEvent);
     WiFi.begin();
+    WiFi.setTxPower(WIFI_POWER_8_5dBm);
 
     // load settings, save defaults if necessary
     LittleFS.begin();
