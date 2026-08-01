@@ -239,6 +239,17 @@ static int do_stats(int argc, char *argv[])
     return 0;
 }
 
+int do_cpu(int argc, char *argv[])
+{
+    if (argc > 1) {
+        int mhz = atoi(argv[1]);
+        printf("Setting CPU speed to %d MHz\n", mhz);
+        setCpuFrequencyMhz(mhz);
+    }
+    printf("Current CPU speed: %d MHz\n", ESP.getCpuFreqMHz());
+    return 0;
+}
+
 static const cmd_t commands[] = {
     { "network", do_network, "[<ssid> [password]] Configure WIFi / show network" },
     { "reboot", do_reboot, "Reboot" },
@@ -250,6 +261,7 @@ static const cmd_t commands[] = {
     { "sysinfo", do_sysinfo, "Show system information" },
     { "tx", do_tx, "Set WiFi tx power" },
     { "stats", do_stats, "Show statistic internals" },
+    { "cpu", do_cpu, "<MHz> Set CPU speed" },
     { NULL, NULL, NULL }
 };
 
@@ -304,6 +316,7 @@ void setup(void)
         config_set_value("mqtt_broker_port", "1883");
         config_set_value("mqtt_user", "");
         config_set_value("mqtt_pass", "");
+        config_set_value("sys_cpu_speed", "160");
         config_save();
     }
     config_serve(server, "/config", "/config.html");
@@ -324,6 +337,9 @@ void setup(void)
 
     MDNS.begin("its-g5-bridge");
     MDNS.addService("_http", "_tcp", 80);
+
+    int mhz = config_get_value("sys_cpu_speed").toInt();
+    printf("Switching to %d MHz...%s\n", mhz, setCpuFrequencyMhz(mhz) ? "OK" : "FAILED");
 }
 
 void loop(void)

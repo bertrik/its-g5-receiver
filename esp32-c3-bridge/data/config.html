@@ -11,6 +11,16 @@
     <p style="text-align:left"><a href="/">/home</a></p>
     <form action="/config" method="post" id="config">
         <fieldset>
+            <legend>System configuration</legend>
+            <div class="row">
+                <label class="col-1">CPU speed
+                    <select name="sys_cpu_speed" required>
+                        <option value="80">80 MHz</option>
+                        <option value="160">160 MHz</option>
+                    </select>
+                </label>
+        </fieldset>
+        <fieldset>
             <legend>MQTT configuration</legend>
             <div class="row">
                 <label class="col-2">Protocol
