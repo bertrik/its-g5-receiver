@@ -15,10 +15,9 @@
 #include "config.h"
 #include "parse.h"
 #include "stats.h"
+#include "sysinfo.h"
 
-#ifndef GIT_VERSION
-#define GIT_VERSION "snapshot"
-#endif
+#include "version.h"
 
 static AsyncWebServer server(80);
 static MiniShell shell(&Serial);
@@ -323,6 +322,9 @@ void setup(void)
     config_serve(server, "/config", "/config.html");
     stats_begin();
     stats_serve(server, "/stats");
+    sysinfo_begin(esp_id);
+    sysinfo_serve(server, "/sysinfo");
+
     server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
     server.begin();
 
