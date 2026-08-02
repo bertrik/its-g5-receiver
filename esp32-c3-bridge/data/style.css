@@ -1,4 +1,4 @@
-{
+*, *::before, *::after {
     box-sizing: border-box;
 }
 
@@ -11,8 +11,15 @@ body {
     color: #333;
 }
 
+.dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
 .card {
     max-width: 800px;
+    width: 100%;
     margin: 0 auto;
     padding: 20px;
     background: #ffffff;
@@ -87,4 +94,30 @@ body {
     filter: brightness(1.1);
     transform: translateY(-1px);
     cursor: pointer;
+}
+
+#sysinfo {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+#sysinfo td,
+#sysinfo th {
+    padding: 3px 8px;
+    text-align: left;
+    border: 1px solid #e5e7eb;
+}
+
+#sysinfo tr:nth-child(odd) {
+    background: white;
+}
+
+#sysinfo tr:nth-child(even) {
+    background: #f8f9fa;
+}
+
+#sysinfo th {
+    background: #eef3ff;
+    font-weight: 600;
 }

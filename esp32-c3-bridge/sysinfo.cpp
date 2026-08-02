@@ -23,19 +23,9 @@ static void handleGetRequest(AsyncWebServerRequest *request)
     doc["temperature"] = temp;
     doc["version"] = GIT_VERSION;
 
-    JsonObject flash = doc["flash"].to < JsonObject > ();
-    flash["size"] = ESP.getFlashChipSize();
-    flash["free"] = ESP.getFreeSketchSpace();
-
     JsonObject heap = doc["heap"].to < JsonObject > ();
     heap["total"] = ESP.getHeapSize();
     heap["free"] = ESP.getFreeHeap();
-    heap["min"] = ESP.getMinFreeHeap();
-    heap["max-alloc"] = ESP.getMaxAllocHeap();
-
-    JsonObject filesystem = doc["filesystem"].to < JsonObject > ();
-    filesystem["total"] = LittleFS.totalBytes();
-    filesystem["used"] = LittleFS.usedBytes();
 
     serializeJson(doc, *response);
     request->send(response);
