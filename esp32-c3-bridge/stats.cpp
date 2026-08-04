@@ -19,7 +19,6 @@ static void handleStatsRequest(AsyncWebServerRequest *request)
     StaticJsonDocument < 1024 > doc;
     doc["timestamp"] = time(nullptr);
     doc["latest"] = stats.latest;
-    doc["uptime"] = millis() / 1000;
     JsonArray counts = doc["counts"].to < JsonArray > ();
     for (int i = 0; i < 60; i++) {
         int min = (get_minute() + 60 - i) % 60;
