@@ -311,6 +311,7 @@ void setup(void)
     LittleFS.begin();
     config_begin(LittleFS, "/config.json");
     if (!config_load()) {
+        config_set_value("ntp_server", "pool.ntp.org");
         config_set_value("mqtt_protocol", "mqtt");
         config_set_value("mqtt_broker_host", "");
         config_set_value("mqtt_broker_port", "1883");
