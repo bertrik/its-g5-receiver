@@ -128,6 +128,7 @@ static int do_network(int argc, char *argv[])
     wl_status_t status = WiFi.status();
     printf("SSID:    %s\n", WiFi.SSID().c_str());
     printf("Status:  %d\n", status);
+    printf("RSSI:    %d\n", WiFi.RSSI());
     printf("Inet:    %s\n", WiFi.localIP().toString().c_str());
     printf("Gateway: %s\n", WiFi.gatewayIP().toString().c_str());
     printf("Netmask: %s\n", WiFi.subnetMask().toString().c_str());

@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include "LittleFS.h"
+#include <WiFi.h>
 
 #include "version.h"
 #include "sysinfo.h"
@@ -26,6 +27,9 @@ static void handleGetRequest(AsyncWebServerRequest *request)
     JsonObject heap = doc["heap"].to < JsonObject > ();
     heap["total"] = ESP.getHeapSize();
     heap["free"] = ESP.getFreeHeap();
+
+    JsonObject wifi = doc["wifi"].to < JsonObject > ();
+    wifi["rssi"] = WiFi.RSSI();
 
     serializeJson(doc, *response);
     request->send(response);
