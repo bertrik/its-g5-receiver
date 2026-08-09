@@ -79,7 +79,7 @@ static bool mqtt_connect(void)
     if (strcmp(proto, "mqtts") == 0) {
         wifiClientSecure.setCACert(rootCA.c_str());
         mqttClient.setClient(wifiClientSecure);
-    } else if(strcmp(proto, "mqtts_nocert") == 0) {
+    } else if (strcmp(proto, "mqtts_nocert") == 0) {
         wifiClientSecure.setInsecure();
         mqttClient.setClient(wifiClientSecure);
     } else {
@@ -250,6 +250,25 @@ int do_cpu(int argc, char *argv[])
     return 0;
 }
 
+int do_ls(int argc, char *argv[])
+{
+    File root = LittleFS.open("/");
+    if (!root) {
+        printf("Failed to open root directory\n");
+        return -1;
+    }
+    if (!root.isDirectory()) {
+        printf("Root is not a directory\n");
+        return -1;
+    }
+    File file = root.openNextFile();
+    while (file) {
+        printf("%6u %s\n", file.size(), file.name());
+        file = root.openNextFile();
+    }
+    return 0;
+}
+
 static const cmd_t commands[] = {
     { "network", do_network, "[<ssid> [password]] Configure WIFi / show network" },
     { "reboot", do_reboot, "Reboot" },
@@ -262,6 +281,7 @@ static const cmd_t commands[] = {
     { "tx", do_tx, "Set WiFi tx power" },
     { "stats", do_stats, "Show statistic internals" },
     { "cpu", do_cpu, "<MHz> Set CPU speed" },
+    { "ls", do_ls, "List files" },
     { NULL, NULL, NULL }
 };
 
@@ -393,7 +413,7 @@ void loop(void)
 
     // keep stats up-to-date
     if (stats_update()) {
-        StaticJsonDocument<128> doc;
+        StaticJsonDocument < 128 > doc;
         char temp[16];
         snprintf(temp, sizeof(temp), "%.1f", temperatureRead());
         doc["temp"] = temp;
@@ -403,7 +423,6 @@ void loop(void)
             printf("Published %s: %s\n", mqtt_stats_topic, json);
         }
     }
-
     // command line processing
     shell.process(">", commands);
 
