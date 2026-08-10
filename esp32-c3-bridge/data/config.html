@@ -13,16 +13,12 @@
         <fieldset>
             <legend>System configuration</legend>
             <div class="row">
-                <label class="col-1">CPU speed
+                <label class="col-2">CPU speed
                     <select name="sys_cpu_speed" required>
                         <option value="80">80 MHz</option>
                         <option value="160">160 MHz</option>
                     </select>
                 </label>
-        </fieldset>
-        <fieldset>
-            <legend>NTP configuration</legend>
-            <div class="row">
                 <label class="col">NTP server
                     <input type="text" name="ntp_server">
                 </label>
@@ -34,18 +30,24 @@
                 <label class="col-2">Protocol
                     <select name="mqtt_protocol" required>
                         <option value="mqtt">mqtt</option>
-                        <option value="mqtts_nocert">mqtts (no cert)</option>
                         <option value="mqtts">mqtts</option>
                     </select>
                 </label>
                 <label class="col">Broker host (leave empty to disable)
                     <input type="text" name="mqtt_broker_host">
                 </label>
-                <label class="col-3">Port
+                <label class="col-2">Port
                     <input type="number" name="mqtt_broker_port" min="0" required>
                 </label>
             </div>
             <div class="row">
+                <label class="col-2">Option
+                    <select name="mqtt_insecure" required>
+                        <option value="false">-</option>
+                        <option value="true">Insecure</option>
+                    </select>
+                    <!-- <input type="checkbox" name="mqtt_insecure" style="width: auto;"> -->
+                </label>
                 <label class="col">Client user name
                     <input type="text" name="mqtt_user">
                 </label>

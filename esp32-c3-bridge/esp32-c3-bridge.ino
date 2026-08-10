@@ -77,10 +77,11 @@ static bool mqtt_connect(void)
         return false;
     }
     if (strcmp(proto, "mqtts") == 0) {
-        wifiClientSecure.setCACert(rootCA.c_str());
-        mqttClient.setClient(wifiClientSecure);
-    } else if (strcmp(proto, "mqtts_nocert") == 0) {
-        wifiClientSecure.setInsecure();
+        if (strcmp(config_get_value("mqtt_insecure").c_str(), "true") == 0) {
+            wifiClientSecure.setInsecure();
+        } else {
+            wifiClientSecure.setCACert(rootCA.c_str());
+        }
         mqttClient.setClient(wifiClientSecure);
     } else {
         mqttClient.setClient(wifiClient);
@@ -333,7 +334,8 @@ void setup(void)
     config_begin(LittleFS, "/config.json");
     if (!config_load()) {
         config_set_value("ntp_server", "pool.ntp.org");
-        config_set_value("mqtt_protocol", "mqtt");
+        config_set_value("mqtt_insecure", "true");
+        config_set_value("mqtt_protocol", "mqtts");
         config_set_value("mqtt_broker_host", "");
         config_set_value("mqtt_broker_port", "1883");
         config_set_value("mqtt_user", "");
