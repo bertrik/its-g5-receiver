@@ -68,8 +68,13 @@ wifi
 ```
 This also shows a link to an internal web page, e.g. http://192.168.1.52
 
+### Web server
+Open the link mentioned above in a browser to access the internal web page.
+
+![ESP32-c3 bridge main page](images/mainpage.png "bridge main page")
+
 ### MQTT configuration
-Open the link mentioned above in a browser to enter the configuration web page.
+Follow the Configuration link on the main page to enter the configuration web page.
 
 ![MQTT page](images/mqtt_config.png "MQTT page")
 
