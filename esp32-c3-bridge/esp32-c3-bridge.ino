@@ -115,7 +115,7 @@ static void handleWifiEvent(WiFiEvent_t event)
     wifiEvent = event;
 }
 
-static int do_network(int argc, char *argv[])
+static int do_wifi(int argc, char *argv[])
 {
     if (argc > 1) {
         char *ssid = argv[1];
@@ -126,6 +126,12 @@ static int do_network(int argc, char *argv[])
         WiFi.begin(ssid, pass);
         printf("done\n");
     }
+    printf("SSID:    %s\n", WiFi.SSID().c_str());
+    return WiFi.status();
+}
+
+static int do_network(int argc, char *argv[])
+{
     wl_status_t status = WiFi.status();
     printf("SSID:    %s\n", WiFi.SSID().c_str());
     printf("Status:  %d\n", status);
@@ -271,7 +277,8 @@ int do_ls(int argc, char *argv[])
 }
 
 static const cmd_t commands[] = {
-    { "network", do_network, "[<ssid> [password]] Configure WIFi / show network" },
+    { "wifi", do_wifi, "[<ssid> [password]] Configure WIFi" },
+    { "network", do_network, "Show network status" },
     { "reboot", do_reboot, "Reboot" },
     { "datetime", do_datetime, "Display date and time" },
     { "disconnect", do_disconnect, "Disconnect from MQTT" },

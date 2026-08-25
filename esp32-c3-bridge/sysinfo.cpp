@@ -15,20 +15,26 @@ static void handleGetRequest(AsyncWebServerRequest *request)
     AsyncResponseStream *response = request->beginResponseStream("application/json");
 
     StaticJsonDocument < 1024 > doc;
-    char temp[10];
-    snprintf(temp, sizeof(temp), "%.1f", temperatureRead());
     doc["id"] = node_id;
+    doc["version"] = GIT_VERSION;
     doc["datetime"] = time(nullptr);
     doc["uptime"] = millis() / 1000;
-    doc["hardware"] = ESP.getChipModel();
-    doc["temperature"] = temp;
-    doc["version"] = GIT_VERSION;
+
+    JsonObject cpu = doc["cpu"].to < JsonObject > ();
+    cpu["chipmodel"] = ESP.getChipModel();
+    char temp[10];
+    snprintf(temp, sizeof(temp), "%.1f", temperatureRead());
+    cpu["frequency"] = ESP.getCpuFreqMHz();
+    cpu["temperature"] = temp;
 
     JsonObject heap = doc["heap"].to < JsonObject > ();
     heap["total"] = ESP.getHeapSize();
     heap["free"] = ESP.getFreeHeap();
 
     JsonObject wifi = doc["wifi"].to < JsonObject > ();
+    wifi["ssid"] = WiFi.SSID();
+    wifi["bssid"] = WiFi.BSSIDstr();
+    wifi["channel"] = WiFi.channel();
     wifi["rssi"] = WiFi.RSSI();
 
     serializeJson(doc, *response);
