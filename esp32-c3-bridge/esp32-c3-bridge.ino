@@ -379,7 +379,9 @@ void setup(void)
 void loop(void)
 {
     static uint32_t last_connect = 0;
-    uint32_t now = millis() / 1000;
+    uint32_t t = millis();
+    uint32_t now = t / 1000;
+    uint32_t ms = t % 1000;
 
     // network status
     bool online = (WiFi.status() == WL_CONNECTED) && (time(nullptr) > 1700000000L);
@@ -387,7 +389,7 @@ void loop(void)
         lastWifiEvent = wifiEvent;
         printf("WiFi event: %s\n", NetworkEvents::eventName(wifiEvent));
     }
-    blue_led(!online || !mqttClient.connected());
+    blue_led(ms < 500 ? !online : !mqttClient.connected());
 
     // keep MQTT connected
     if (online && !mqttClient.connected() && ((now - last_connect) > 10)) {
