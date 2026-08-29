@@ -10,12 +10,12 @@
 #include <ESPAsyncWebServer.h>
 #include "MiniShell.h"
 #include <PubSubClient.h>
-#include <MicroSlip.h>
 
 #include "config.h"
 #include "parse.h"
 #include "stats.h"
 #include "sysinfo.h"
+#include "its5_parser.h"
 
 #include "version.h"
 
@@ -29,7 +29,6 @@ static String rootCA;
 static PubSubClient mqttClient;
 static char esp_mac[24];        // e.g. "aa:bb:cc:dd:ee:ff"
 static char esp_id[16];
-static MicroSlip slip(Serial0);
 static uint8_t packet[2500];
 static StaticJsonDocument < 1024 > infoDoc;
 
@@ -38,6 +37,7 @@ static char mqtt_status_topic[128];
 static char mqtt_info_topic[128];
 static char mqtt_stats_topic[128];
 static char mqtt_packet_topic[128];
+static its5_frame_t its5_frame;
 
 static void blue_led(int on)
 {
@@ -118,10 +118,11 @@ static void handleWifiEvent(WiFiEvent_t event)
 static int do_wifi(int argc, char *argv[])
 {
     if (argc > 1) {
+        printf("Disconnecting...\n");
+        WiFi.disconnect(true, true);
+        delay(2000);
         char *ssid = argv[1];
         const char *pass = (argc > 2) ? argv[2] : "";
-        WiFi.disconnect(true, true);
-        delay(1000);
         printf("Starting WiFi %s with password '%s'...", ssid, pass);
         WiFi.begin(ssid, pass);
         printf("done\n");
@@ -393,32 +394,31 @@ void loop(void)
 
     // keep MQTT connected
     if (online && !mqttClient.connected() && ((now - last_connect) > 10)) {
-        // show blue while still connecting, off when connected
-        bool connected = mqtt_connect();
+        mqtt_connect();
         last_connect = now;
     }
     mqttClient.loop();
 
     // watch for incoming packets
-    size_t pkt_size;
-    while ((pkt_size = slip.parsePacket(packet, sizeof(packet))) > 0) {
-        stats_count(1);
+    while (Serial0.available() > 0) {
+        int c = Serial0.read();
+        if (its5_parse(c & 0xFF, &its5_frame)) {
+            // send over mqtt
+            blue_led(true);
+            printf("Got packet %d bytes\n", its5_frame.len);
+            if (online && mqttClient.connected()) {
+                mqtt_publish(mqtt_packet_topic, its5_frame.payload, its5_frame.len);
+            }
+            blue_led(false);
 
-        // send over mqtt
-        blue_led(true);
-        printf("Got packet %d bytes\n", pkt_size);
-        if (online && mqttClient.connected()) {
-            mqtt_publish(mqtt_packet_topic, packet, pkt_size);
-        }
-        blue_led(false);
-
-        // log to console
-        ieee80211_t ieee;
-        if (parse_ieee80211(packet, pkt_size, &ieee) > 0) {
-            printf
-                ("IEEE 802.11 packet from %02x:%02x:%02x:%02x:%02x:%02x, sequence control: %04x\n",
-                 ieee.source_mac[0], ieee.source_mac[1], ieee.source_mac[2], ieee.source_mac[3],
-                 ieee.source_mac[4], ieee.source_mac[5], ieee.sequence_ctrl);
+            // log to console
+            ieee80211_t ieee;
+            if (parse_ieee80211(packet, its5_frame.len, &ieee) > 0) {
+                printf
+                    ("IEEE 802.11 packet from %02x:%02x:%02x:%02x:%02x:%02x, sequence control: %04x\n",
+                     ieee.source_mac[0], ieee.source_mac[1], ieee.source_mac[2], ieee.source_mac[3],
+                     ieee.source_mac[4], ieee.source_mac[5], ieee.sequence_ctrl);
+            }
         }
     }
 
