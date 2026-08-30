@@ -9,7 +9,6 @@
 
 #include <Adafruit_NeoPixel.h>
 #include <MiniShell.h>
-#include <MicroSlip.h>
 
 #define RGB_LED_PIN 27
 
@@ -17,7 +16,6 @@ static Adafruit_NeoPixel led(1, RGB_LED_PIN, NEO_GRB + NEO_KHZ800);
 
 // when configured with USB-CDC port, "Serial" goes to ACM0 (USB-CDC), "Serial0"/printf goes to UART/USB0
 static MiniShell shell(&Serial);
-static MicroSlip slip(Serial0);
 
 static uint32_t rgb = 0;
 static const int CHANNEL = 5900;
@@ -122,6 +120,32 @@ static void wifi_sniffer_cb(void *rawpkt, wifi_promiscuous_pkt_type_t type)
     }
 }
 
+static void send_its5(unsigned long micros, size_t len, const uint8_t *data)
+{
+    uint32_t sec = micros / 1000000;
+    uint32_t usec = micros % 1000000;
+
+    uint8_t header[14];
+    uint8_t *p = header;
+    *p++ = 'I';
+    *p++ = 'T';
+    *p++ = 'S';
+    *p++ = '5';
+    *p++ = sec & 0xFF;
+    *p++ = (sec >> 8) & 0xFF;
+    *p++ = (sec >> 16) & 0xFF;
+    *p++ = (sec >> 24) & 0xFF;
+    *p++ = usec & 0xFF;
+    *p++ = (usec >> 8) & 0xFF;
+    *p++ = (usec >> 16) & 0xFF;
+    *p++ = (usec >> 24) & 0xFF;
+    *p++ = len & 0xFF;
+    *p++ = (len >> 8) & 0xFF;
+
+    Serial0.write(header, sizeof(header));
+    Serial0.write(data, len);
+}
+
 static int do_reboot(int argc, char *argv[])
 {
     ESP.restart();
@@ -184,10 +208,7 @@ void loop(void)
     packet_t pkt;
     while (dequeue(&pkt)) {
         set_led(0x00FF00);
-        slip.beginPacket();
-        slip.write(pkt.data, pkt.len);
-        slip.endPacket();
-        printhex("Packet", pkt.data, pkt.len);
+        send_its5(micros(), pkt.len, pkt.data);
         set_led(0);
     }
 

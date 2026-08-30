@@ -400,25 +400,27 @@ void loop(void)
     mqttClient.loop();
 
     // watch for incoming packets
-    while (Serial0.available() > 0) {
+    bool have_packet = false;
+    while (!have_packet && Serial0.available() > 0) {
         int c = Serial0.read();
         if (its5_parse(c & 0xFF, &its5_frame)) {
-            // send over mqtt
-            blue_led(true);
-            printf("Got packet %d bytes\n", its5_frame.len);
-            if (online && mqttClient.connected()) {
-                mqtt_publish(mqtt_packet_topic, its5_frame.payload, its5_frame.len);
-            }
-            blue_led(false);
+            have_packet = true;
+        }
+    }
+    if (have_packet) {
+        // send over mqtt
+        blue_led(true);
+        printf("Got packet %d bytes\n", its5_frame.len);
+        mqtt_publish(mqtt_packet_topic, its5_frame.payload, its5_frame.len);
+        blue_led(false);
 
-            // log to console
-            ieee80211_t ieee;
-            if (parse_ieee80211(packet, its5_frame.len, &ieee) > 0) {
-                printf
-                    ("IEEE 802.11 packet from %02x:%02x:%02x:%02x:%02x:%02x, sequence control: %04x\n",
-                     ieee.source_mac[0], ieee.source_mac[1], ieee.source_mac[2], ieee.source_mac[3],
-                     ieee.source_mac[4], ieee.source_mac[5], ieee.sequence_ctrl);
-            }
+        // log to console
+        ieee80211_t ieee;
+        if (parse_ieee80211(packet, its5_frame.len, &ieee) > 0) {
+            printf
+                ("IEEE 802.11 packet from %02x:%02x:%02x:%02x:%02x:%02x, sequence control: %04x\n",
+                    ieee.source_mac[0], ieee.source_mac[1], ieee.source_mac[2], ieee.source_mac[3],
+                    ieee.source_mac[4], ieee.source_mac[5], ieee.sequence_ctrl);
         }
     }
 
