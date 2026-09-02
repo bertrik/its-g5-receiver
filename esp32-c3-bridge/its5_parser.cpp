@@ -3,6 +3,7 @@
 
 #include "its5_parser.h"
 
+static const uint8_t ITS5_HEADER[4] = {'I', 'T', 'S', '5'};
 static uint8_t buffer[ITS5_HEADER_LEN + ITS5_MAX_PAYLOAD];
 static uint16_t frame_len = 0;
 static int position = 0;
@@ -11,28 +12,16 @@ bool its5_parse(uint8_t b, its5_frame_t *frame)
 {
     switch (position) {
     case 0:
-        if (b != 'I') {
-            return false;
-        }
-        break;
     case 1:
-        if (b != 'T') {
-            position = 0;
-            return its5_parse(b, frame);
-        }
-        break;
     case 2:
-        if (b != 'S') {
-            position = 0;
-            return its5_parse(b, frame);
-        }
-        break;
     case 3:
-        if (b != '5') {
-            position = 0;
-            return its5_parse(b, frame);
+        // header magic
+        if (b != ITS5_HEADER[position]) {
+            if (position > 0) {
+                position = 0;
+                return its5_parse(b, frame);
+            }
         }
-        printf("ITS5 header detected\n");
         break;
     case 13:
         // second byte of length field

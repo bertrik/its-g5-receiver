@@ -179,6 +179,7 @@ static int do_disconnect(int argc, char *argv[])
 static int do_led(int argc, char *argv[])
 {
     bool state = (argc > 1) ? atoi(argv[1]) : !digitalRead(LED_BUILTIN);
+    printf("LED %d\n", state);
     digitalWrite(LED_BUILTIN, state ? HIGH : LOW);
     return 0;
 }
